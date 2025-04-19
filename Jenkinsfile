@@ -1,5 +1,5 @@
 pipeline {
-    agent any  // Use default agent for checkout & commit info
+    agent any
 
     environment {
         REGISTRY = 'ghcr.io'
@@ -29,7 +29,7 @@ pipeline {
                 docker {
                     image 'docker:20.10-cli'
                     args '-v /var/run/docker.sock:/var/run/docker.sock'
-                    reuseNode true  // Share workspace with outer agent
+                    reuseNode true
                 }
             }
             steps {
