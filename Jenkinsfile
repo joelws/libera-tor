@@ -1,9 +1,6 @@
 pipeline {
     agent {
-        docker {
-            image 'docker:20.10-cli'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
+        label 'docker-agent'
     }
 
     environment {
@@ -20,19 +17,10 @@ pipeline {
             }
         }
 
-        stage('Get Commit SHA') {
-            steps {
-                script {
-                    env.GIT_COMMIT_HASH = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE}:${GIT_COMMIT_HASH} ."
-                }
+                sh "docker version"
+                sh "docker build -t ${IMAGE}:${env.BUILD_ID} ."
             }
         }
 
@@ -43,12 +31,10 @@ pipeline {
                     usernameVariable: 'GHCR_USER',
                     passwordVariable: 'GHCR_TOKEN'
                 )]) {
-                    script {
-                        sh """
-                        echo "${GHCR_TOKEN}" | docker login ${REGISTRY} -u ${GHCR_USER} --password-stdin
-                        docker push ${IMAGE}:${GIT_COMMIT_HASH}
-                        """
-                    }
+                    sh """
+                    echo "${GHCR_TOKEN}" | docker login ${REGISTRY} -u ${GHCR_USER} --password-stdin
+                    docker push ${IMAGE}:${env.BUILD_ID}
+                    """
                 }
             }
         }
