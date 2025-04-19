@@ -1,44 +1,57 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'docker:20.10-cli'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
         REGISTRY = 'ghcr.io'
         GIT_USER = 'joelws'
         REPOSITORY = 'libera-tor'
-        GHCR_CREDS = credentials('github-token')
         IMAGE = "${REGISTRY}/${GIT_USER}/${REPOSITORY}"
-      }
+    }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
                 checkout scm
-              }
-          }
-        stage('Retrieve Git Commit and Hash') {
+            }
+        }
+
+        stage('Get Commit SHA') {
             steps {
                 script {
                     env.GIT_COMMIT_HASH = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    echo "Github Commit Hash: ${env.GIT_COMMIT_HASH}"
-                  }
-              }
-          }
-        stage('Build') {
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
             steps {
                 script {
-                    def image = "${env.IMAGE}:${env.GIT_COMMIT_HASH}"
-                    def imageLatest = "${env.IMAGE}:latest"
-                    sh """
-                      echo ${env.GHCR_CREDS_PSW} | docker login ${env.REGISTRY} -u ${env.GHCR_CREDS_USR} --password-stdin 
-                      docker build \
-                        -t ${image} \
-                        -t ${imageLatest} \
-                        .
-                      docker push ${image}
-                      docker push ${imageLatest}
-                    """
-                  }
-              }
-          }
-  }
+                    sh "docker build -t ${IMAGE}:${GIT_COMMIT_HASH} ."
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-token',
+                    usernameVariable: 'GHCR_USER',
+                    passwordVariable: 'GHCR_TOKEN'
+                )]) {
+                    script {
+                        sh """
+                        echo "${GHCR_TOKEN}" | docker login ${REGISTRY} -u ${GHCR_USER} --password-stdin
+                        docker push ${IMAGE}:${GIT_COMMIT_HASH}
+                        """
+                    }
+                }
+            }
+        }
+    }
 }
+
