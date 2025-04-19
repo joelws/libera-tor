@@ -1,10 +1,11 @@
 pipeline {
-    def app
+    agent any
+
     environment {
-        REGISTRY = 'ghcr.io'
-        GIT_USER = 'joelws'
+        REGISTRY   = 'ghcr.io'
+        GIT_USER   = 'joelws'
         REPOSITORY = 'libera-tor'
-        IMAGE = "${REGISTRY}/${GIT_USER}/${REPOSITORY}"
+        IMAGE      = "${REGISTRY}/${GIT_USER}/${REPOSITORY}"
     }
 
     stages {
@@ -14,12 +15,15 @@ pipeline {
             }
         }
 
-        stage('Push Docker Image') {
-          docker.withRegistry('https://ghcr.io', 'github-token') {
-              docker.build("${IMAGE}:${env.BUILD_ID}").push()
-            }
+        stage('Build and Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('https://ghcr.io', 'github-token') {
+                        def app = docker.build("${IMAGE}:${env.BUILD_ID}")
+                        app.push()
+                    }
+                }
             }
         }
     }
 }
-
