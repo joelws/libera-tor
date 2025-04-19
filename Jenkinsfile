@@ -1,8 +1,5 @@
 pipeline {
-    agent {
-        label 'docker-agent'
-    }
-
+    def app
     environment {
         REGISTRY = 'ghcr.io'
         GIT_USER = 'joelws'
@@ -17,25 +14,10 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh "docker version"
-                sh "docker build -t ${IMAGE}:${env.BUILD_ID} ."
-            }
-        }
-
         stage('Push Docker Image') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-token',
-                    usernameVariable: 'GHCR_USER',
-                    passwordVariable: 'GHCR_TOKEN'
-                )]) {
-                    sh """
-                    echo "${GHCR_TOKEN}" | docker login ${REGISTRY} -u ${GHCR_USER} --password-stdin
-                    docker push ${IMAGE}:${env.BUILD_ID}
-                    """
-                }
+          docker.withRegistry('https://ghcr.io', 'github-token') {
+              docker.build("${IMAGE}:${env.BUILD_ID}").push()
+            }
             }
         }
     }
