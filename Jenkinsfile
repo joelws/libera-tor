@@ -19,7 +19,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1', 'docker-hub-credentials') {
-                        def app = docker.build("${IMAGE}:${env.BUILD_ID}", "--no-cache")
+                        def app = docker.build("${IMAGE}:${env.BUILD_ID}", "--no-cache .")
 
                         docker.withRegistry('https://ghcr.io', 'github-token') {
                             app.push()
